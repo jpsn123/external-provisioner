@@ -452,7 +452,7 @@ func (p *csiProvisioner) checkDriverCapabilities(rc *requiredCapabilities) error
 	return nil
 }
 
-func makeVolumeName(prefix, pvcUID string, volumeNameUUIDLength int) (string, error) {
+func makeVolumeName(prefix, pvcUID string, volumeNameUUIDLength int, pvcNamespace string, pvcName string) (string, error) {
 	// create persistent name based on a volumeNamePrefix and volumeNameUUIDLength
 	// of PVC's UID
 	if len(prefix) == 0 {
@@ -463,10 +463,10 @@ func makeVolumeName(prefix, pvcUID string, volumeNameUUIDLength int) (string, er
 	}
 	if volumeNameUUIDLength == -1 {
 		// Default behavior is to not truncate or remove dashes
-		return fmt.Sprintf("%s-%s", prefix, pvcUID), nil
+		return fmt.Sprintf("%s-%s-%s", prefix, pvcNamespace, pvcName), nil
 	}
 	// Else we remove all dashes from UUID and truncate to volumeNameUUIDLength
-	return fmt.Sprintf("%s-%s", prefix, strings.Replace(string(pvcUID), "-", "", -1)[0:volumeNameUUIDLength]), nil
+	return fmt.Sprintf("%s-%s-%s-%s", prefix, pvcNamespace, pvcName, strings.Replace(string(pvcUID), "-", "", -1)[0:volumeNameUUIDLength]), nil
 }
 
 func getAccessTypeBlock() *csi.VolumeCapability_Block {
@@ -623,7 +623,7 @@ func (p *csiProvisioner) prepareProvision(ctx context.Context, claim *v1.Persist
 		return nil, controller.ProvisioningFinished, fmt.Errorf("claim Selector is not supported")
 	}
 
-	pvName, err := makeVolumeName(p.volumeNamePrefix, string(claim.ObjectMeta.UID), p.volumeNameUUIDLength)
+	pvName, err := makeVolumeName(p.volumeNamePrefix, string(claim.ObjectMeta.UID), p.volumeNameUUIDLength, claim.GetNamespace(), claim.GetName())
 	if err != nil {
 		return nil, controller.ProvisioningFinished, err
 	}
